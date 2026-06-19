@@ -1,0 +1,115 @@
+name: build
+on:
+  schedule:
+    - cron: "30 3 * * *"   # daily, after yt-dlp nightly publishes (~23:59 UTC)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - test/smoke.sh
+      - .github/workflows/build.yml
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/yt-dlp-docker
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { channel: nightly, ytdlp_pre: "--pre", req: "yt-dlp[default,curl-cffi]" }
+          - { channel: stable,  ytdlp_pre: "",      req: "yt-dlp[default,curl-cffi]" }
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130  # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # v3
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute date tag
+        id: meta
+        run: echo "date=$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Build amd64 for smoke
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: smoke-amd64:${{ matrix.channel }}
+          build-args: |
+            YTDLP_PRE=${{ matrix.ytdlp_pre }}
+            YTDLP_REQ=${{ matrix.req }}
+
+      - name: Smoke amd64
+        run: BUILD=0 IMAGE=smoke-amd64:${{ matrix.channel }} ./test/smoke.sh
+
+      - name: Build arm64 for smoke (QEMU)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: smoke-arm64:${{ matrix.channel }}
+          build-args: |
+            YTDLP_PRE=${{ matrix.ytdlp_pre }}
+            YTDLP_REQ=${{ matrix.req }}
+
+      - name: Smoke arm64
+        run: BUILD=0 IMAGE=smoke-arm64:${{ matrix.channel }} ./test/smoke.sh
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
+        with:
+          image-ref: smoke-amd64:${{ matrix.channel }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Build & push multi-arch
+        id: push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: |
+            ${{ env.IMAGE }}:${{ matrix.channel }}
+            ${{ env.IMAGE }}:${{ matrix.channel }}-${{ steps.meta.outputs.date }}
+          build-args: |
+            YTDLP_PRE=${{ matrix.ytdlp_pre }}
+            YTDLP_REQ=${{ matrix.req }}
+
+      - name: Sign image (keyless)
+        run: cosign sign --yes "${IMAGE}@${{ steps.push.outputs.digest }}"
+
+  # Also tag :latest = :stable for discoverability
+  alias-latest:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          docker buildx imagetools create \
+            --tag "${IMAGE}:latest" "${IMAGE}:stable"

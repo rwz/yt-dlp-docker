@@ -1,0 +1,27 @@
+name: checks
+on:
+  push:
+    paths:
+      - shell/**
+      - test/**
+      - .github/workflows/checks.yml
+  pull_request:
+    paths:
+      - shell/**
+      - test/**
+      - .github/workflows/checks.yml
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest   # shellcheck is preinstalled on the runner
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: ShellCheck
+        run: shellcheck shell/yt-dlp-docker.sh test/script_test.sh test/smoke.sh
+
+      - name: Script tests
+        run: bash test/script_test.sh

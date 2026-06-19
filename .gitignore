@@ -1,0 +1,14 @@
+# Reference clones — kept locally for reference, not part of this project
+/yt-dlp/
+/docker-youtube-dl/
+
+# Build output
+/dist/
+
+# Claude Code worktrees / scratch
+/.claude/
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*~
