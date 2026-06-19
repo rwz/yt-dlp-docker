@@ -29,13 +29,13 @@ jobs:
           - { channel: nightly, ytdlp_pre: "--pre", req: "yt-dlp[default,curl-cffi]" }
           - { channel: stable,  ytdlp_pre: "",      req: "yt-dlp[default,curl-cffi]" }
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
 
       - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130  # v3
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # v3
 
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -46,7 +46,7 @@ jobs:
         run: echo "date=$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
 
       - name: Build amd64 for smoke
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
         with:
           context: .
           platforms: linux/amd64
@@ -60,7 +60,7 @@ jobs:
         run: BUILD=0 IMAGE=smoke-amd64:${{ matrix.channel }} ./test/smoke.sh
 
       - name: Build arm64 for smoke (QEMU)
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
         with:
           context: .
           platforms: linux/arm64
@@ -74,7 +74,7 @@ jobs:
         run: BUILD=0 IMAGE=smoke-arm64:${{ matrix.channel }} ./test/smoke.sh
 
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           image-ref: smoke-amd64:${{ matrix.channel }}
           severity: HIGH,CRITICAL
@@ -83,7 +83,7 @@ jobs:
 
       - name: Build & push multi-arch
         id: push
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -105,7 +105,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
