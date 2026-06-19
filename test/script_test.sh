@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Unit tests for shell/yt-dlp-docker.sh — the executable multi-call wrapper.
+# Uses the YTDLP_DOCKER_DRY_RUN seam (prints the docker argv, runs no docker).
+set -euo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+script="$here/../shell/yt-dlp-docker.sh"
+
+export YTDLP_DOCKER_DRY_RUN=1
+
+bindir="$(mktemp -d)"
+ln -s "$script" "$bindir/yt-dlp"
+ln -s "$script" "$bindir/yt-dlp-scoped"
+
+home="$(mktemp -d)"
+outside="$(mktemp -d)"
+export HOME="$home"
+mkdir -p "$home/sub"
+
+fail() { echo "TEST FAIL: $*" >&2; exit 1; }
+ok()   { echo "  ok: $*"; }
+
+n_mounts() { printf '%s' "$1" | grep -o -- '-v ' | wc -l | tr -d ' '; }
+
+# t1: default mode, CWD under HOME -> exactly one bind mount ($HOME), plus flags
+out="$( cd "$home/sub" && "$bindir/yt-dlp" foo )"
+echo "$out" | grep -q -- "-v $home:$home"        || fail "t1 missing HOME mount"
+[ "$(n_mounts "$out")" = "1" ]                    || fail "t1 expected exactly one -v mount"
+echo "$out" | grep -q -- "-e HOME=$home"          || fail "t1 HOME should be real home"
+echo "$out" | grep -q 'ghcr.io/rwz/yt-dlp-docker:nightly' || fail "t1 image ref"
+echo "$out" | grep -q -- '--cap-drop=ALL'         || fail "t1 cap-drop"
+echo "$out" | grep -q -- '--security-opt=no-new-privileges' || fail "t1 no-new-privileges"
+ok "t1 default/under-HOME: single HOME mount + flags"
+
+# t2: default mode, CWD outside HOME -> HOME mount AND PWD mount
+out="$( cd "$outside" && "$bindir/yt-dlp" foo )"
+echo "$out" | grep -q -- "-v $home:$home"        || fail "t2 missing HOME mount"
+echo "$out" | grep -q -- "-v $outside:$outside"  || fail "t2 missing PWD mount"
+ok "t2 default/outside-HOME: HOME + PWD mounts"
+
+# t3: default mode refuses /
+if ( cd / && "$bindir/yt-dlp" foo ) >/dev/null 2>&1; then fail "t3 should refuse /"; fi
+msg="$( ( cd / && "$bindir/yt-dlp" foo ) 2>&1 || true )"
+echo "$msg" | grep -q 'refusing to run from /'   || fail "t3 missing refusal message"
+ok "t3 refuses /"
+
+# t4: --user gated on Linux only
+out_linux="$( cd "$home" && YTDLP_DOCKER_OS=Linux "$bindir/yt-dlp" foo )"
+echo "$out_linux" | grep -q -- "--user $(id -u):$(id -g)" || fail "t4 Linux should add --user"
+if ( cd "$home" && YTDLP_DOCKER_OS=Darwin "$bindir/yt-dlp" foo ) | grep -q -- '--user'; then
+  fail "t4 Darwin should NOT add --user"
+fi
+ok "t4 --user gated on Linux"
+
+# t5: scoped dispatch (basename) — CWD-only mount, HOME=PWD, NOT all of HOME; no config dir yet
+out="$( cd "$home/sub" && "$bindir/yt-dlp-scoped" foo )"
+echo "$out" | grep -q -- "-v $home/sub:$home/sub" || fail "t5 scoped missing PWD mount"
+echo "$out" | grep -q -- "-e HOME=$home/sub"       || fail "t5 scoped HOME should be PWD"
+if echo "$out" | grep -q -- "-v $home:$home "; then fail "t5 scoped must NOT mount all of HOME"; fi
+if echo "$out" | grep -q -- '/cfg'; then fail "t5 scoped: no config dir -> no /cfg mount"; fi
+ok "t5 scoped: CWD-only, HOME=PWD, no config when absent"
+
+# t6: scoped with config dir present -> read-only config mount + --config-locations
+mkdir -p "$home/.config/yt-dlp"
+out="$( cd "$home/sub" && "$bindir/yt-dlp-scoped" foo )"
+echo "$out" | grep -q -- "-v $home/.config/yt-dlp:/cfg:ro" || fail "t6 scoped missing config mount"
+echo "$out" | grep -q -- '--config-locations /cfg'          || fail "t6 scoped missing --config-locations"
+ok "t6 scoped: config mounted read-only when present"
+
+# t7: caller-shell independence — invoking via a non-bash caller still works (own shebang)
+out="$( cd "$home/sub" && sh -c "'$bindir/yt-dlp' foo" )"
+echo "$out" | grep -q 'ghcr.io/rwz/yt-dlp-docker:nightly' || fail "t7 sh-caller invocation failed"
+ok "t7 runs from a non-bash caller (sh -c)"
+
+# t8: YTDLP_DOCKER_IMAGE override switches the channel
+out="$( cd "$home/sub" && YTDLP_DOCKER_IMAGE=ghcr.io/rwz/yt-dlp-docker:stable "$bindir/yt-dlp" foo )"
+echo "$out" | grep -q 'ghcr.io/rwz/yt-dlp-docker:stable' || fail "t8 image override ignored"
+ok "t8 YTDLP_DOCKER_IMAGE override"
+
+echo "SCRIPT TESTS PASSED"
