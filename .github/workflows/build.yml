@@ -74,7 +74,7 @@ jobs:
         run: BUILD=0 IMAGE=smoke-arm64:${{ matrix.channel }} ./test/smoke.sh
 
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           image-ref: smoke-amd64:${{ matrix.channel }}
           severity: HIGH,CRITICAL
