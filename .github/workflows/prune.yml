@@ -1,0 +1,33 @@
+name: prune
+on:
+  schedule:
+    - cron: "30 4 * * 0"   # weekly, Sundays — after the daily build
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview deletions without removing anything"
+        type: boolean
+        default: true
+
+# Deleting package versions needs a classic PAT with delete:packages scope
+# (the default GITHUB_TOKEN cannot reliably delete versions of user-owned
+# packages). Store it as the GHCR_CLEANUP_TOKEN repository secret.
+permissions: {}
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete date-tagged images older than 90 days
+        uses: snok/container-retention-policy@d3bdcf5ce9b05f685154e4a16c39233b245e3d53  # v3.1.0
+        with:
+          account: user
+          token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+          image-names: yt-dlp-docker
+          # Never touch the moving tags; only date-stamped builds age out.
+          image-tags: "!latest !stable !nightly"
+          # "both" also reaps the now-untagged cosign signatures and
+          # provenance/SBOM manifests left behind by pruned date tags.
+          tag-selection: both
+          cut-off: 90d
+          dry-run: ${{ github.event.inputs.dry_run == 'true' }}
