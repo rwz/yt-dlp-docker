@@ -82,6 +82,20 @@ what you need under the directory you run it from.
 
 Extra hardening for either name: add `--read-only --tmpfs /tmp`.
 
+## Troubleshooting
+
+### macOS: `operation not permitted` on `~/Downloads`, `~/Desktop`, `~/Documents`
+
+```
+docker: Error response from daemon: ... mkdir /Users/you/Downloads: operation not permitted: unknown
+```
+
+These folders are protected by macOS privacy controls (TCC), and VM-based Docker backends share
+your filesystem through a host process that needs explicit permission to enter them. Since the
+default `yt-dlp` mode mounts `$HOME` and runs from your current directory, working inside one of
+these folders (or writing into one via `-o`) fails until access is granted. The fix is to give
+your Docker backend **Full Disk Access** in System Settings → Privacy & Security, then restart it.
+
 ## Limitations
 
 - Paths containing a `:` are unsupported (Docker `-v` splits on `:`).
