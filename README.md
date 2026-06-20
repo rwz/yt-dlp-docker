@@ -56,8 +56,9 @@ Available tags:
 
 Nothing to do — the script pulls the image on each run (best-effort, non-fatal: a registry
 outage never blocks a download you could otherwise make) and reclaims the previous image so
-only the latest is kept on disk. Pin a `:nightly-YYYY.MM.DD` tag (via `YTDLP_DOCKER_IMAGE`) if
-you need reproducibility.
+only the latest is kept on disk. Pull/prune progress is printed live on stderr, so a slow
+first pull is visibly downloading rather than looking like a hang. Pin a `:nightly-YYYY.MM.DD`
+tag (via `YTDLP_DOCKER_IMAGE`) if you need reproducibility.
 
 ## Authentication / cookies
 
