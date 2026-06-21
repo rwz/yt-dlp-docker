@@ -50,10 +50,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compute date tag
-        id: meta
-        run: echo "date=$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
-
       - name: Build amd64 for smoke
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
         with:
@@ -69,6 +65,12 @@ jobs:
 
       - name: Smoke amd64
         run: BUILD=0 IMAGE=smoke-amd64:${{ matrix.channel }} ./test/smoke.sh
+
+      - name: Date tag from the built yt-dlp version
+        id: meta
+        run: |
+          v="$(docker run --rm --entrypoint cat smoke-amd64:${{ matrix.channel }} /IMAGE_VERSION)"
+          echo "date=$(echo "$v" | cut -d. -f1-3)" >> "$GITHUB_OUTPUT"
 
       - name: Build arm64 for smoke (QEMU)
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
