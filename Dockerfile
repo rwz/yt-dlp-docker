@@ -13,8 +13,7 @@ RUN python3 -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 # YTDLP_PRE selects the channel: "--pre" (default) = nightly, "" = stable.
 # (Named YTDLP_PRE, not PIP_PRE, so it can't collide with pip's PIP_* config env vars.)
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir ${YTDLP_PRE} --only-binary=:all: ${YTDLP_REQ}
+RUN pip install --no-cache-dir ${YTDLP_PRE} --only-binary=:all: ${YTDLP_REQ}
 
 # Deno is hand-pinned: bump DENO_VERSION and BOTH DSUM checksums together from
 # https://github.com/denoland/deno/releases — Dependabot does not track this raw
