@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir ${YTDLP_PRE} --only-binary=:all: ${YTDLP_REQ} xattr \
     && pip freeze > /opt/venv/requirements.lock
 
+# Deno is hand-pinned: bump DENO_VERSION and BOTH DSUM checksums together from
+# https://github.com/denoland/deno/releases — Dependabot does not track this raw
+# download. Each DSUM is the sha256 of that arch's .zip.
 ARG DENO_VERSION=v2.8.3
 ARG TARGETARCH
 RUN set -eux; \
