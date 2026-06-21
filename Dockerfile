@@ -29,7 +29,7 @@ RUN set -eux; \
     esac; \
     curl -fL "https://github.com/denoland/deno/releases/download/${DENO_VERSION}/deno-${DA}-unknown-linux-gnu.zip" -o /tmp/deno.zip; \
     echo "${DSUM}  /tmp/deno.zip" | sha256sum -c -; \
-    unzip /tmp/deno.zip -d /usr/local/bin; \
+    unzip -j /tmp/deno.zip deno -d /usr/local/bin; \
     chmod +x /usr/local/bin/deno; \
     rm /tmp/deno.zip
 
