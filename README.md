@@ -6,6 +6,11 @@ it is always the latest nightly and ships every useful optional dependency (full
 support via Deno + yt-dlp-ejs, `curl_cffi` impersonation, ffmpeg, aria2, AtomicParsley),
 with nothing to install or maintain on the host but Docker.
 
+## Requirements
+
+[Docker](https://docs.docker.com/get-docker/) installed and running — the only host dependency.
+On macOS, start Docker Desktop (or Colima) first.
+
 ## Install
 
 The wrapper is a single executable script, [`shell/yt-dlp-docker.sh`](shell/yt-dlp-docker.sh).
