@@ -43,6 +43,8 @@ echo "$out" | grep -q -- "-e HOME=$home"          || fail "t1 HOME should be rea
 echo "$out" | grep -q 'ghcr.io/rwz/yt-dlp-docker:nightly' || fail "t1 image ref"
 echo "$out" | grep -q -- '--cap-drop=ALL'         || fail "t1 cap-drop"
 echo "$out" | grep -q -- '--security-opt=no-new-privileges' || fail "t1 no-new-privileges"
+echo "$out" | grep -q -- ' -i '                   || fail "t1 missing -i"
+if echo "$out" | grep -q -- ' -t '; then fail "t1 unexpected -t under non-TTY"; fi
 ok "t1 default/under-HOME: single HOME mount + flags"
 
 # t2: default mode, CWD outside HOME -> HOME mount AND PWD mount
@@ -75,6 +77,8 @@ echo "$out" | grep -q -- '--no-config'             || fail "t5 scoped should pas
 echo "$out" | grep -q -- '--cap-drop=ALL'                   || fail "t5 scoped missing --cap-drop=ALL"
 echo "$out" | grep -q -- '--security-opt=no-new-privileges' || fail "t5 scoped missing no-new-privileges"
 echo "$out" | grep -q -- "-w $home/sub"                     || fail "t5 scoped missing -w PWD"
+echo "$out" | grep -q -- ' -i '                             || fail "t5 missing -i"
+if echo "$out" | grep -q -- ' -t '; then fail "t5 unexpected -t under non-TTY"; fi
 ok "t5 scoped: CWD-only, HOME=PWD, no config when absent"
 
 # t6: scoped with config dir present -> ro mount is a docker flag (before the image);
