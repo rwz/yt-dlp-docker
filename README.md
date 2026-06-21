@@ -63,6 +63,9 @@ Pull/prune progress is printed live on stderr, so a slow first pull is visibly d
 rather than looking like a hang. Pin a `:nightly-YYYY.MM.DD` tag (via `YTDLP_DOCKER_IMAGE`) if
 you need reproducibility.
 
+Set `YTDLP_DOCKER_NO_PULL=1` to skip the per-run pull and prune entirely — useful for
+metered, offline, or tight-loop use, where you keep whatever image is already cached.
+
 ## Authentication / cookies
 
 `--cookies-from-browser` cannot work in a container (no browser/keyring). Export a Netscape

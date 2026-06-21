@@ -14,6 +14,7 @@
 #   YTDLP_DOCKER_IMAGE  override the image ref (e.g. …:stable) — defaults to :nightly
 #   YTDLP_DOCKER_RUN_ARGS  extra `docker run` flags spliced in before the image
 #                          (word-split; e.g. "--read-only --tmpfs /tmp" to harden)
+#   YTDLP_DOCKER_NO_PULL if set, skip the per-run image pull + prune (cached/offline)
 #   YTDLP_DOCKER_DRY_RUN if set, print the docker argv instead of running (test seam)
 #   YTDLP_DOCKER_OS      override the detected OS (test seam; defaults to `uname -s`)
 set -u
@@ -25,10 +26,11 @@ img="${YTDLP_DOCKER_IMAGE:-ghcr.io/rwz/yt-dlp-docker:nightly}"
 read -ra run_args <<< "${YTDLP_DOCKER_RUN_ARGS:-}"
 
 # Best-effort, non-fatal auto-update on every call (stateless); then reclaim our
-# previous dangling nightly (label-scoped, dangling-only — never -a). Skipped in dry-run.
-# Progress is shown live (not silenced) so a slow pull never looks like a hang; it is
-# sent to stderr so it can't corrupt a stdout stream (e.g. `yt-dlp -o - … | player`).
-if [ -z "${YTDLP_DOCKER_DRY_RUN:-}" ]; then
+# previous dangling nightly (label-scoped, dangling-only — never -a). Skipped in dry-run
+# and when YTDLP_DOCKER_NO_PULL is set (cached/offline/tight-loop use). Progress is shown
+# live (not silenced) so a slow pull never looks like a hang; it is sent to stderr so it
+# can't corrupt a stdout stream (e.g. `yt-dlp -o - … | player`).
+if [ -z "${YTDLP_DOCKER_DRY_RUN:-}" ] && [ -z "${YTDLP_DOCKER_NO_PULL:-}" ]; then
   docker pull "$img" >&2 || true
   docker image prune -f --filter "label=dev.rwz.yt-dlp-docker=true" >&2 || true
 fi

@@ -12,6 +12,15 @@ bindir="$(mktemp -d)"
 ln -s "$script" "$bindir/yt-dlp"
 ln -s "$script" "$bindir/yt-dlp-scoped"
 
+# Fake docker that logs its argv to a file — lets tests observe pull/prune/run
+# without a real daemon. Resolved via PATH only when a test prepends "$bindir".
+dockerlog="$bindir/docker.log"
+cat > "$bindir/docker" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$dockerlog"
+EOF
+chmod +x "$bindir/docker"
+
 home="$(mktemp -d)"
 outside="$(mktemp -d)"
 export HOME="$home"
@@ -82,5 +91,19 @@ out="$( cd "$home/sub" && YTDLP_DOCKER_RUN_ARGS='--read-only --tmpfs /tmp' "$bin
 echo "$out" | grep -q -- '--read-only --tmpfs /tmp ghcr.io/rwz/yt-dlp-docker' \
   || fail "t9 RUN_ARGS not spliced before image"
 ok "t9 YTDLP_DOCKER_RUN_ARGS spliced before image"
+
+# t10: YTDLP_DOCKER_NO_PULL skips the per-run pull + prune (but still runs the container)
+: > "$dockerlog"
+( cd "$home/sub" && YTDLP_DOCKER_DRY_RUN='' YTDLP_DOCKER_NO_PULL=1 PATH="$bindir:$PATH" "$bindir/yt-dlp" foo )
+grep -q '^run ' "$dockerlog"           || fail "t10 NO_PULL should still run the container"
+if grep -qE 'pull|prune' "$dockerlog"; then fail "t10 NO_PULL must skip pull+prune"; fi
+ok "t10 YTDLP_DOCKER_NO_PULL skips pull+prune, still runs"
+
+# t11: without NO_PULL the per-run pull + prune happen
+: > "$dockerlog"
+( cd "$home/sub" && YTDLP_DOCKER_DRY_RUN='' PATH="$bindir:$PATH" "$bindir/yt-dlp" foo )
+grep -q '^pull '      "$dockerlog"     || fail "t11 expected a docker pull"
+grep -q 'image prune' "$dockerlog"     || fail "t11 expected a docker image prune"
+ok "t11 default path pulls + prunes"
 
 echo "SCRIPT TESTS PASSED"
