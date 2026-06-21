@@ -68,6 +68,9 @@ echo "$out" | grep -q -- "-e HOME=$home/sub"       || fail "t5 scoped HOME shoul
 if echo "$out" | grep -q -- "-v $home:$home "; then fail "t5 scoped must NOT mount all of HOME"; fi
 if echo "$out" | grep -q -- '/cfg'; then fail "t5 scoped: no config dir -> no /cfg mount"; fi
 echo "$out" | grep -q -- '--no-config'             || fail "t5 scoped should pass --no-config"
+echo "$out" | grep -q -- '--cap-drop=ALL'                   || fail "t5 scoped missing --cap-drop=ALL"
+echo "$out" | grep -q -- '--security-opt=no-new-privileges' || fail "t5 scoped missing no-new-privileges"
+echo "$out" | grep -q -- "-w $home/sub"                     || fail "t5 scoped missing -w PWD"
 ok "t5 scoped: CWD-only, HOME=PWD, no config when absent"
 
 # t6: scoped with config dir present -> ro mount is a docker flag (before the image);
