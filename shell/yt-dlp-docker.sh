@@ -52,7 +52,7 @@ user=()
 # Note: "${arr[@]+"${arr[@]}"}" expands to nothing when the array is empty — required so
 # an empty array doesn't trip "unbound variable" under `set -u` on bash 3.2 (stock macOS).
 case "$(basename "$0")" in
-  *scoped*)
+  *-scoped)
     # Least privilege: mount only the current dir (rw) + yt-dlp config (ro, if it exists).
     # The [ -d ] guard avoids Docker auto-creating a missing ~/.config/yt-dlp as root.
     # The /cfg mount is a docker flag (before the image); --config-locations and --no-config
