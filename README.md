@@ -1,5 +1,7 @@
 # yt-dlp-docker
 
+[![build](https://github.com/rwz/yt-dlp-docker/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/rwz/yt-dlp-docker/actions/workflows/build.yml)
+
 A transparent, always-latest [yt-dlp](https://github.com/yt-dlp/yt-dlp) in a container.
 Install one small executable and `yt-dlp <url>` works exactly like a local install — except
 it tracks the latest yt-dlp nightly by default (a `:stable` channel is also available) and
