@@ -82,7 +82,8 @@ case "$(basename "$0")" in
 esac
 
 if [ -n "${YTDLP_DOCKER_DRY_RUN:-}" ]; then
-  printf 'docker %s\n' "${args[*]}"
+  # %q so the printed line is copy-paste-safe for args with spaces/globs/quotes.
+  printf 'docker'; printf ' %q' "${args[@]}"; printf '\n'
   exit 0
 fi
 exec docker "${args[@]}"
