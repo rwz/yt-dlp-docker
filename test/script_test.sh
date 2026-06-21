@@ -67,14 +67,20 @@ echo "$out" | grep -q -- "-v $home/sub:$home/sub" || fail "t5 scoped missing PWD
 echo "$out" | grep -q -- "-e HOME=$home/sub"       || fail "t5 scoped HOME should be PWD"
 if echo "$out" | grep -q -- "-v $home:$home "; then fail "t5 scoped must NOT mount all of HOME"; fi
 if echo "$out" | grep -q -- '/cfg'; then fail "t5 scoped: no config dir -> no /cfg mount"; fi
+echo "$out" | grep -q -- '--no-config'             || fail "t5 scoped should pass --no-config"
 ok "t5 scoped: CWD-only, HOME=PWD, no config when absent"
 
-# t6: scoped with config dir present -> read-only config mount + --config-locations
+# t6: scoped with config dir present -> ro mount is a docker flag (before the image);
+# --config-locations + --no-config are yt-dlp flags and must come AFTER the image.
 mkdir -p "$home/.config/yt-dlp"
 out="$( cd "$home/sub" && "$bindir/yt-dlp-scoped" foo )"
 echo "$out" | grep -q -- "-v $home/.config/yt-dlp:/cfg:ro" || fail "t6 scoped missing config mount"
-echo "$out" | grep -q -- '--config-locations /cfg'          || fail "t6 scoped missing --config-locations"
-ok "t6 scoped: config mounted read-only when present"
+preimg="${out%%ghcr.io/rwz/yt-dlp-docker*}"
+postimg="${out#*ghcr.io/rwz/yt-dlp-docker:nightly }"
+if echo "$preimg" | grep -q -- '--config-locations'; then fail "t6 --config-locations must not be a docker flag"; fi
+echo "$postimg" | grep -q -- '--config-locations /cfg' || fail "t6 missing --config-locations after image"
+echo "$postimg" | grep -q -- '--no-config'             || fail "t6 missing --no-config after image"
+ok "t6 scoped: ro config mount; --no-config + --config-locations passed to yt-dlp"
 
 # t7: caller-shell independence — invoking via a non-bash caller still works (own shebang)
 out="$( cd "$home/sub" && sh -c "'$bindir/yt-dlp' foo" )"

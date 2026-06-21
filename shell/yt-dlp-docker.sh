@@ -55,12 +55,16 @@ case "$(basename "$0")" in
   *scoped*)
     # Least privilege: mount only the current dir (rw) + yt-dlp config (ro, if it exists).
     # The [ -d ] guard avoids Docker auto-creating a missing ~/.config/yt-dlp as root.
-    cfg=()
-    [ -d "$HOME/.config/yt-dlp" ] && cfg=(-v "$HOME/.config/yt-dlp:/cfg:ro" --config-locations /cfg)
+    # The /cfg mount is a docker flag (before the image); --config-locations and --no-config
+    # are yt-dlp flags and must go AFTER the image. HOME=$PWD would otherwise let yt-dlp scan
+    # the untrusted working dir for config, so --no-config leaves /cfg as the only config.
+    cfgmount=(); cfgargs=()
+    [ -d "$HOME/.config/yt-dlp" ] && { cfgmount=(-v "$HOME/.config/yt-dlp:/cfg:ro"); cfgargs=(--config-locations /cfg); }
     args=(run --rm -i "${tty[@]+"${tty[@]}"}" "${user[@]+"${user[@]}"}"
-          -e HOME="$PWD" -v "$PWD:$PWD" -w "$PWD" "${cfg[@]+"${cfg[@]}"}"
+          -e HOME="$PWD" -v "$PWD:$PWD" -w "$PWD" "${cfgmount[@]+"${cfgmount[@]}"}"
           --cap-drop=ALL --security-opt=no-new-privileges
-          "${run_args[@]+"${run_args[@]}"}" "$img" "$@")
+          "${run_args[@]+"${run_args[@]}"}" "$img"
+          --no-config "${cfgargs[@]+"${cfgargs[@]}"}" "$@")
     ;;
   *)
     # Max fidelity: behave like a local yt-dlp — mount $HOME (+ $PWD if it is outside $HOME).

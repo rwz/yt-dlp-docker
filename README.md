@@ -81,7 +81,9 @@ could read or modify your files.
 
 For least privilege, install the **`yt-dlp-scoped`** symlink (shown in Install) and use it: it
 mounts only the current directory (read-write) plus your `~/.config/yt-dlp` (read-only, if it
-exists), and sets `HOME` to the working directory. It works from every shell because it is the
+exists), and sets `HOME` to the working directory. Only `~/.config/yt-dlp` is honored as
+configuration — yt-dlp's default config search is disabled, so a stray `yt-dlp.conf` in the
+directory you run from is never loaded. It works from every shell because it is the
 same executable invoked under a different name. The trade-off: paths outside the current
 directory (e.g. `-o ~/elsewhere`, `--cookies ~/cookies.txt`, `~/.netrc`) are not visible — keep
 what you need under the directory you run it from.
