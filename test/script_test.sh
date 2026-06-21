@@ -29,7 +29,9 @@ mkdir -p "$home/sub"
 fail() { echo "TEST FAIL: $*" >&2; exit 1; }
 ok()   { echo "  ok: $*"; }
 
-n_mounts() { printf '%s' "$1" | grep -o -- '-v ' | wc -l | tr -d ' '; }
+# Count only docker's own -v flags (those before the image ref), so a user-supplied
+# yt-dlp -v after the image isn't miscounted as a bind mount.
+n_mounts() { printf '%s' "${1%%ghcr.io/*}" | grep -o -- '-v ' | wc -l | tr -d ' '; }
 
 # t1: default mode, CWD under HOME -> exactly one bind mount ($HOME), plus flags
 out="$( cd "$home/sub" && "$bindir/yt-dlp" foo )"
@@ -128,5 +130,10 @@ ok "t12 unset HOME fails clearly"
 ( cd "$home/sub" && PATH="$bindir:$PATH" "$bindir/yt-dlp" foo ) >/dev/null
 [ ! -s "$dockerlog" ] || fail "t13 dry-run must not invoke docker: $(cat "$dockerlog")"
 ok "t13 dry-run performs no docker side effects"
+
+# t14: a user-supplied yt-dlp -v (verbose) after the image is NOT miscounted as a bind mount
+out="$( cd "$home/sub" && "$bindir/yt-dlp" -v https://example.com/x )"
+[ "$(n_mounts "$out")" = "1" ] || fail "t14 user -v must not be counted as a mount"
+ok "t14 user -v not miscounted as a mount"
 
 echo "SCRIPT TESTS PASSED"
