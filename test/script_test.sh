@@ -8,7 +8,11 @@ script="$here/../shell/yt-dlp-docker.sh"
 
 export YTDLP_DOCKER_DRY_RUN=1
 
-bindir="$(mktemp -d)"
+# Single temp root, cleaned on any exit (incl. a failed assertion under set -e).
+tmproot="$(mktemp -d)"
+trap 'rm -rf "$tmproot"' EXIT
+bindir="$tmproot/bin"; home="$tmproot/home"; outside="$tmproot/outside"
+mkdir -p "$bindir" "$home" "$outside"
 ln -s "$script" "$bindir/yt-dlp"
 ln -s "$script" "$bindir/yt-dlp-scoped"
 
@@ -21,8 +25,6 @@ printf '%s\n' "\$*" >> "$dockerlog"
 EOF
 chmod +x "$bindir/docker"
 
-home="$(mktemp -d)"
-outside="$(mktemp -d)"
 export HOME="$home"
 mkdir -p "$home/sub"
 
