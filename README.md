@@ -54,8 +54,9 @@ Available tags:
 
 ## Updating
 
-Nothing to do — the script pulls the image on each run (best-effort, non-fatal: a registry
-outage never blocks a download you could otherwise make) and prunes the now-untagged previous
+Nothing to do — the script pulls the image on each run (best-effort, non-fatal: once the image
+is cached, a registry outage won't block you — only a first-ever run needs the registry) and
+prunes the now-untagged previous
 image of the same tag, so a single rolling tag (e.g. `:nightly`) never accumulates old layers.
 Images you've explicitly pinned (`:nightly-YYYY.MM.DD`) or other channels you've pulled
 (`:stable`) stay tagged and are kept until you remove them yourself (`docker image rm`).
