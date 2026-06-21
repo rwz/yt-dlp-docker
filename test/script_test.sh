@@ -120,4 +120,10 @@ msg="$( ( unset HOME; cd "$home/sub" && "$bindir/yt-dlp" foo ) 2>&1 || true )"
 echo "$msg" | grep -q 'HOME' || fail "t12 message should mention HOME"
 ok "t12 unset HOME fails clearly"
 
+# t13: dry-run performs no docker side effects (no inspect/pull/prune/run)
+: > "$dockerlog"
+( cd "$home/sub" && PATH="$bindir:$PATH" "$bindir/yt-dlp" foo ) >/dev/null
+[ ! -s "$dockerlog" ] || fail "t13 dry-run must not invoke docker: $(cat "$dockerlog")"
+ok "t13 dry-run performs no docker side effects"
+
 echo "SCRIPT TESTS PASSED"
