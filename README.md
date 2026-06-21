@@ -2,8 +2,9 @@
 
 A transparent, always-latest [yt-dlp](https://github.com/yt-dlp/yt-dlp) in a container.
 Install one small executable and `yt-dlp <url>` works exactly like a local install — except
-it is always the latest nightly and ships every useful optional dependency (full YouTube
-support via Deno + yt-dlp-ejs, `curl_cffi` impersonation, ffmpeg, aria2, AtomicParsley),
+it tracks the latest yt-dlp nightly by default (a `:stable` channel is also available) and
+ships every useful optional dependency (full YouTube support via Deno + yt-dlp-ejs,
+`curl_cffi` impersonation, ffmpeg, aria2, AtomicParsley),
 with nothing to install or maintain on the host but Docker.
 
 ## Requirements
