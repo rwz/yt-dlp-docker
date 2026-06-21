@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/rwz/yt-dlp-docker/main/shell/yt-dlp
 chmod +x ~/.local/bin/yt-dlp
 
 # optional: the least-privilege variant (see Security) — same file, second name
-ln -s yt-dlp ~/.local/bin/yt-dlp-scoped
+ln -sf yt-dlp ~/.local/bin/yt-dlp-scoped
 ```
 
 Make sure `~/.local/bin` is on your `PATH` (most setups already do this; otherwise add
