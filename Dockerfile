@@ -41,9 +41,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /usr/local/bin/deno /usr/local/bin/deno
+# HOME=/tmp is a writable default for a bare `docker run`; the wrapper overrides it
+# to a mounted dir so yt-dlp's cache (notably the yt-dlp-ejs JS solver) persists at
+# $HOME/.cache/yt-dlp across runs instead of being thrown away with --rm.
 ENV PATH=/opt/venv/bin:$PATH \
-    HOME=/tmp \
-    XDG_CACHE_HOME=/tmp/yt-dlp-cache
+    HOME=/tmp
 RUN yt-dlp --version > /IMAGE_VERSION \
     && python3 -c 'import sys, curl_cffi' \
     && deno --version
