@@ -80,7 +80,12 @@ same executable invoked under a different name. The trade-off: paths outside the
 directory (e.g. `-o ~/elsewhere`, `--cookies ~/cookies.txt`, `~/.netrc`) are not visible — keep
 what you need under the directory you run it from.
 
-Extra hardening for either name: add `--read-only --tmpfs /tmp`.
+Extra hardening for either name — pass extra `docker run` flags via
+`YTDLP_DOCKER_RUN_ARGS` (they are spliced in before the image):
+
+```sh
+export YTDLP_DOCKER_RUN_ARGS='--read-only --tmpfs /tmp'
+```
 
 ## Troubleshooting
 

@@ -77,4 +77,10 @@ out="$( cd "$home/sub" && YTDLP_DOCKER_IMAGE=ghcr.io/rwz/yt-dlp-docker:stable "$
 echo "$out" | grep -q 'ghcr.io/rwz/yt-dlp-docker:stable' || fail "t8 image override ignored"
 ok "t8 YTDLP_DOCKER_IMAGE override"
 
+# t9: YTDLP_DOCKER_RUN_ARGS is spliced in before the image (docker-level flags)
+out="$( cd "$home/sub" && YTDLP_DOCKER_RUN_ARGS='--read-only --tmpfs /tmp' "$bindir/yt-dlp" foo )"
+echo "$out" | grep -q -- '--read-only --tmpfs /tmp ghcr.io/rwz/yt-dlp-docker' \
+  || fail "t9 RUN_ARGS not spliced before image"
+ok "t9 YTDLP_DOCKER_RUN_ARGS spliced before image"
+
 echo "SCRIPT TESTS PASSED"

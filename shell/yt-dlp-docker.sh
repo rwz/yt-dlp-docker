@@ -12,11 +12,17 @@
 #
 # Env overrides:
 #   YTDLP_DOCKER_IMAGE  override the image ref (e.g. …:stable) — defaults to :nightly
+#   YTDLP_DOCKER_RUN_ARGS  extra `docker run` flags spliced in before the image
+#                          (word-split; e.g. "--read-only --tmpfs /tmp" to harden)
 #   YTDLP_DOCKER_DRY_RUN if set, print the docker argv instead of running (test seam)
 #   YTDLP_DOCKER_OS      override the detected OS (test seam; defaults to `uname -s`)
 set -u
 
 img="${YTDLP_DOCKER_IMAGE:-ghcr.io/rwz/yt-dlp-docker:nightly}"
+
+# Optional extra `docker run` flags, spliced in before the image. Word-split on
+# purpose (read -ra avoids the SC2206 quoting warning); empty when the var is unset.
+read -ra run_args <<< "${YTDLP_DOCKER_RUN_ARGS:-}"
 
 # Best-effort, non-fatal auto-update on every call (stateless); then reclaim our
 # previous dangling nightly (label-scoped, dangling-only — never -a). Skipped in dry-run.
@@ -44,7 +50,8 @@ case "$(basename "$0")" in
     [ -d "$HOME/.config/yt-dlp" ] && cfg=(-v "$HOME/.config/yt-dlp:/cfg:ro" --config-locations /cfg)
     args=(run --rm -i "${tty[@]+"${tty[@]}"}" "${user[@]+"${user[@]}"}"
           -e HOME="$PWD" -v "$PWD:$PWD" -w "$PWD" "${cfg[@]+"${cfg[@]}"}"
-          --cap-drop=ALL --security-opt=no-new-privileges "$img" "$@")
+          --cap-drop=ALL --security-opt=no-new-privileges
+          "${run_args[@]+"${run_args[@]}"}" "$img" "$@")
     ;;
   *)
     # Max fidelity: behave like a local yt-dlp — mount $HOME (+ $PWD if it is outside $HOME).
@@ -56,7 +63,8 @@ case "$(basename "$0")" in
     esac
     args=(run --rm -i "${tty[@]+"${tty[@]}"}" "${user[@]+"${user[@]}"}"
           -e HOME="$HOME" "${mounts[@]}" -w "$PWD"
-          --cap-drop=ALL --security-opt=no-new-privileges "$img" "$@")
+          --cap-drop=ALL --security-opt=no-new-privileges
+          "${run_args[@]+"${run_args[@]}"}" "$img" "$@")
     ;;
 esac
 
