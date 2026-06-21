@@ -25,14 +25,21 @@ img="${YTDLP_DOCKER_IMAGE:-ghcr.io/rwz/yt-dlp-docker:nightly}"
 # purpose (read -ra avoids the SC2206 quoting warning); empty when the var is unset.
 read -ra run_args <<< "${YTDLP_DOCKER_RUN_ARGS:-}"
 
-# Best-effort, non-fatal auto-update on every call (stateless); then reclaim our
-# previous dangling nightly (label-scoped, dangling-only — never -a). Skipped in dry-run
-# and when YTDLP_DOCKER_NO_PULL is set (cached/offline/tight-loop use). Progress is shown
-# live (not silenced) so a slow pull never looks like a hang; it is sent to stderr so it
-# can't corrupt a stdout stream (e.g. `yt-dlp -o - … | player`).
-if [ -z "${YTDLP_DOCKER_DRY_RUN:-}" ] && [ -z "${YTDLP_DOCKER_NO_PULL:-}" ]; then
-  docker pull "$img" >&2 || true
-  docker image prune -f --filter "label=dev.rwz.yt-dlp-docker=true" >&2 || true
+# Everything below talks to docker; the dry-run seam prints argv and never does, so skip
+# it all under dry-run. Fail early with a clear message when docker isn't available.
+if [ -z "${YTDLP_DOCKER_DRY_RUN:-}" ]; then
+  command -v docker >/dev/null 2>&1 || {
+    echo "$(basename "$0"): docker not found on PATH — install Docker (Desktop/Engine) and make sure it is running" >&2
+    exit 127
+  }
+  # Best-effort, non-fatal auto-update (stateless); then reclaim our previous dangling
+  # nightly (label-scoped, dangling-only — never -a). Skipped when YTDLP_DOCKER_NO_PULL is
+  # set (cached/offline/tight-loop use). Progress is shown live (not silenced) so a slow
+  # pull never looks like a hang; it goes to stderr so it can't corrupt a stdout stream.
+  if [ -z "${YTDLP_DOCKER_NO_PULL:-}" ]; then
+    docker pull "$img" >&2 || true
+    docker image prune -f --filter "label=dev.rwz.yt-dlp-docker=true" >&2 || true
+  fi
 fi
 
 # Allocate a TTY only when BOTH stdin and stdout are terminals.
