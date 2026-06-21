@@ -53,6 +53,15 @@ echo "$out" | grep -q -- "-v $home:$home"        || fail "t2 missing HOME mount"
 echo "$out" | grep -q -- "-v $outside:$outside"  || fail "t2 missing PWD mount"
 ok "t2 default/outside-HOME: HOME + PWD mounts"
 
+# t2b: a sibling sharing HOME's name prefix ($HOME-sib) must NOT be treated as under HOME
+#      (the trailing slash in `case "$PWD/" in "$HOME/"*` is load-bearing) -> own mount
+sib="${home}-sib"; mkdir -p "$sib"
+out="$( cd "$sib" && "$bindir/yt-dlp" foo )"
+echo "$out" | grep -q -- "-v $home:$home"  || fail "t2b missing HOME mount"
+echo "$out" | grep -q -- "-v $sib:$sib"    || fail "t2b sibling needs its own mount"
+[ "$(n_mounts "$out")" = "2" ]             || fail "t2b expected exactly two mounts"
+ok "t2b sibling of HOME gets its own mount"
+
 # t3: default mode refuses /
 if ( cd / && "$bindir/yt-dlp" foo ) >/dev/null 2>&1; then fail "t3 should refuse /"; fi
 msg="$( ( cd / && "$bindir/yt-dlp" foo ) 2>&1 || true )"
