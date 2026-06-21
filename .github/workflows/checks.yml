@@ -1,6 +1,7 @@
 name: checks
 on:
   push:
+    branches: [main]
     paths:
       - shell/**
       - test/**
