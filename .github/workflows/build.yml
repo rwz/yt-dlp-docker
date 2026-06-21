@@ -19,15 +19,17 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
-  attestations: write
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/yt-dlp-docker
 
 jobs:
   build:
+    permissions:
+      contents: read      # checkout
+      packages: write     # push to ghcr
+      id-token: write     # cosign keyless OIDC
+      attestations: write # provenance + sbom
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -127,6 +129,9 @@ jobs:
   # Also tag :latest = :stable for discoverability
   alias-latest:
     needs: build
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4
