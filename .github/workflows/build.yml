@@ -10,6 +10,13 @@ on:
       - test/smoke.sh
       - .github/workflows/build.yml
 
+# Serialize publishes so overlapping runs don't race on the shared :stable/:latest
+# tags. Don't cancel — let an in-flight publish finish rather than leave a partial
+# manifest or a stale :latest pointer.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write
