@@ -55,10 +55,13 @@ Available tags:
 ## Updating
 
 Nothing to do — the script pulls the image on each run (best-effort, non-fatal: a registry
-outage never blocks a download you could otherwise make) and reclaims the previous image so
-only the latest is kept on disk. Pull/prune progress is printed live on stderr, so a slow
-first pull is visibly downloading rather than looking like a hang. Pin a `:nightly-YYYY.MM.DD`
-tag (via `YTDLP_DOCKER_IMAGE`) if you need reproducibility.
+outage never blocks a download you could otherwise make) and prunes the now-untagged previous
+image of the same tag, so a single rolling tag (e.g. `:nightly`) never accumulates old layers.
+Images you've explicitly pinned (`:nightly-YYYY.MM.DD`) or other channels you've pulled
+(`:stable`) stay tagged and are kept until you remove them yourself (`docker image rm`).
+Pull/prune progress is printed live on stderr, so a slow first pull is visibly downloading
+rather than looking like a hang. Pin a `:nightly-YYYY.MM.DD` tag (via `YTDLP_DOCKER_IMAGE`) if
+you need reproducibility.
 
 ## Authentication / cookies
 
