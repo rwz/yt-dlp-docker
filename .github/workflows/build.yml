@@ -55,6 +55,8 @@ jobs:
           build-args: |
             YTDLP_PRE=${{ matrix.ytdlp_pre }}
             YTDLP_REQ=${{ matrix.req }}
+          cache-from: type=gha,scope=${{ matrix.channel }}-amd64
+          cache-to: type=gha,mode=max,scope=${{ matrix.channel }}-amd64
 
       - name: Smoke amd64
         run: BUILD=0 IMAGE=smoke-amd64:${{ matrix.channel }} ./test/smoke.sh
@@ -69,6 +71,8 @@ jobs:
           build-args: |
             YTDLP_PRE=${{ matrix.ytdlp_pre }}
             YTDLP_REQ=${{ matrix.req }}
+          cache-from: type=gha,scope=${{ matrix.channel }}-arm64
+          cache-to: type=gha,mode=max,scope=${{ matrix.channel }}-arm64
 
       - name: Smoke arm64
         run: BUILD=0 IMAGE=smoke-arm64:${{ matrix.channel }} ./test/smoke.sh
@@ -97,6 +101,9 @@ jobs:
           build-args: |
             YTDLP_PRE=${{ matrix.ytdlp_pre }}
             YTDLP_REQ=${{ matrix.req }}
+          cache-from: |
+            type=gha,scope=${{ matrix.channel }}-amd64
+            type=gha,scope=${{ matrix.channel }}-arm64
 
       - name: Sign image (keyless)
         run: cosign sign --yes "${IMAGE}@${{ steps.push.outputs.digest }}"
