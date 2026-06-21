@@ -49,6 +49,6 @@ COPY --from=builder /usr/local/bin/deno /usr/local/bin/deno
 ENV PATH=/opt/venv/bin:$PATH \
     HOME=/tmp
 RUN yt-dlp --version > /IMAGE_VERSION \
-    && python3 -c 'import sys, curl_cffi' \
+    && python3 -c 'import curl_cffi' \
     && deno --version
 ENTRYPOINT ["tini", "-g", "--", "yt-dlp"]
