@@ -112,4 +112,12 @@ grep -q '^pull '      "$dockerlog"     || fail "t11 expected a docker pull"
 grep -q 'image prune' "$dockerlog"     || fail "t11 expected a docker image prune"
 ok "t11 default path pulls + prunes"
 
+# t12: unset HOME fails with a clear, HOME-mentioning message (not "unbound variable")
+rc=0
+( unset HOME; cd "$home/sub" && "$bindir/yt-dlp" foo ) >/dev/null 2>&1 || rc=$?
+[ "$rc" != 0 ] || fail "t12 expected failure when HOME unset"
+msg="$( ( unset HOME; cd "$home/sub" && "$bindir/yt-dlp" foo ) 2>&1 || true )"
+echo "$msg" | grep -q 'HOME' || fail "t12 message should mention HOME"
+ok "t12 unset HOME fails clearly"
+
 echo "SCRIPT TESTS PASSED"

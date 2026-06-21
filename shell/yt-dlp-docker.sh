@@ -19,6 +19,10 @@
 #   YTDLP_DOCKER_OS      override the detected OS (test seam; defaults to `uname -s`)
 set -u
 
+# HOME drives the mounts and config path; fail clearly rather than with a bare
+# "unbound variable" if it is somehow unset (e.g. `env -i`).
+: "${HOME:?must be set (export HOME or run from a normal shell)}"
+
 img="${YTDLP_DOCKER_IMAGE:-ghcr.io/rwz/yt-dlp-docker:nightly}"
 
 # Optional extra `docker run` flags, spliced in before the image. Word-split on
