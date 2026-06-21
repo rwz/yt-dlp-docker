@@ -113,3 +113,7 @@ your Docker backend **Full Disk Access** in System Settings → Privacy & Securi
 
 `linux/amd64` and `linux/arm64`. Other arches are intentionally unsupported: Deno (required
 for YouTube) has no armv7/musl build.
+
+## License
+
+Released into the public domain under the [Unlicense](UNLICENSE).
