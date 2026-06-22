@@ -1,8 +1,8 @@
 .git
-docs
 test
 shell
 README.md
+UNLICENSE
 yt-dlp
 docker-youtube-dl
 .github
