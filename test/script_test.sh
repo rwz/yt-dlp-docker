@@ -110,7 +110,7 @@ echo "$out" | grep -q -- "-v $home/.config/yt-dlp:/cfg:ro" || fail "t6 scoped mi
 preimg="${out%%ghcr.io/rwz/yt-dlp-docker*}"
 postimg="${out#*ghcr.io/rwz/yt-dlp-docker:nightly }"
 if echo "$preimg" | grep -q -- '--config-locations'; then fail "t6 --config-locations must not be a docker flag"; fi
-echo "$postimg" | grep -q -- '--config-locations /cfg' || fail "t6 missing --config-locations after image"
+echo "$postimg" | grep -Eq -- '--config-locations /cfg( |$)' || fail "t6 missing --config-locations after image"
 echo "$postimg" | grep -q -- '--no-config'             || fail "t6 missing --no-config after image"
 ok "t6 scoped: ro config mount; --no-config + --config-locations passed to yt-dlp"
 
