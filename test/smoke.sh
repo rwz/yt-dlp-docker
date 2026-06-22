@@ -48,10 +48,10 @@ ok "impersonate targets listed"
 
 echo "== Deno / JS runtime =="
 
-# deno present and recent enough (>= 2.x)
-docker run --rm --entrypoint deno "$IMAGE" --version | grep -qE '^deno 2\.' \
-  || fail "deno missing or older than 2.x"
-ok "deno 2.x present"
+# deno present and recent enough (>= 2)
+docker run --rm --entrypoint deno "$IMAGE" --version | grep -qE '^deno [2-9]' \
+  || fail "deno missing or older than 2"
+ok "deno >= 2 present"
 
 # yt-dlp's debug header detects deno and does NOT warn about a missing JS runtime.
 # `yt-dlp -v` prints the [debug] header (then exits with a usage error, hence || true).
