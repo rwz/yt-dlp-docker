@@ -45,6 +45,8 @@ echo "$out" | grep -q -- '--cap-drop=ALL'         || fail "t1 cap-drop"
 echo "$out" | grep -q -- '--security-opt=no-new-privileges' || fail "t1 no-new-privileges"
 echo "$out" | grep -q -- ' -i '                   || fail "t1 missing -i"
 if echo "$out" | grep -q -- ' -t '; then fail "t1 unexpected -t under non-TTY"; fi
+echo "$out" | grep -q -- '--rm'                   || fail "t1 missing --rm"
+echo "$out" | grep -q -- "-w $home/sub"           || fail "t1 missing -w PWD"
 ok "t1 default/under-HOME: single HOME mount + flags"
 
 # t2: default mode, CWD outside HOME -> HOME mount AND PWD mount
@@ -62,11 +64,13 @@ echo "$out" | grep -q -- "-v $sib:$sib"    || fail "t2b sibling needs its own mo
 [ "$(n_mounts "$out")" = "2" ]             || fail "t2b expected exactly two mounts"
 ok "t2b sibling of HOME gets its own mount"
 
-# t3: default mode refuses /
-if ( cd / && "$bindir/yt-dlp" foo ) >/dev/null 2>&1; then fail "t3 should refuse /"; fi
+# t3: default mode refuses / with exit 1
+rc=0
+( cd / && "$bindir/yt-dlp" foo ) >/dev/null 2>&1 || rc=$?
+[ "$rc" = 1 ] || fail "t3 expected exit 1, got $rc"
 msg="$( ( cd / && "$bindir/yt-dlp" foo ) 2>&1 || true )"
 echo "$msg" | grep -q 'refusing to run from /'   || fail "t3 missing refusal message"
-ok "t3 refuses /"
+ok "t3 refuses / with exit 1"
 
 # t4: --user gated on Linux only
 out_linux="$( cd "$home" && YTDLP_DOCKER_OS=Linux "$bindir/yt-dlp" foo )"
