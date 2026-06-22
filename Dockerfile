@@ -13,7 +13,17 @@ RUN python3 -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 # YTDLP_PRE selects the channel: "--pre" (default) = nightly, "" = stable.
 # (Named YTDLP_PRE, not PIP_PRE, so it can't collide with pip's PIP_* config env vars.)
-RUN pip install --no-cache-dir ${YTDLP_PRE} --only-binary=:all: ${YTDLP_REQ}
+#
+# Install into a plain --target tree, then split it: yt-dlp + yt-dlp-ejs (which change
+# every nightly) go to /opt/ytdlp; the heavy, slow-moving deps (curl-cffi, pycryptodomex,
+# …) stay in /opt/deps. The runtime stage COPYs them as two layers so a nightly bump only
+# re-ships the small /opt/ytdlp layer. --no-compile ships no build-time .pyc, whose embedded
+# source mtimes would otherwise make the layers non-reproducible (defeating the split).
+RUN pip install --no-cache-dir --no-compile ${YTDLP_PRE} --only-binary=:all: \
+      --target /opt/deps ${YTDLP_REQ} \
+ && mkdir -p /opt/ytdlp \
+ && mv /opt/deps/yt_dlp /opt/deps/yt_dlp-*.dist-info \
+       /opt/deps/yt_dlp_ejs /opt/deps/yt_dlp_ejs-*.dist-info /opt/ytdlp/
 
 # Deno is hand-pinned: bump DENO_VERSION and BOTH DSUM checksums together from
 # https://github.com/denoland/deno/releases — Dependabot does not track this raw
@@ -38,17 +48,31 @@ LABEL dev.rwz.yt-dlp-docker=true \
       org.opencontainers.image.source=https://github.com/rwz/yt-dlp-docker \
       org.opencontainers.image.description="Transparent, always-latest yt-dlp CLI in Docker" \
       org.opencontainers.image.licenses=Unlicense
+# Also drop apt/dpkg logs + the ldconfig aux-cache (not just apt lists): they embed
+# build-time timestamps as file *content*, which the reproducible-build timestamp
+# rewrite can't normalize — leaving them re-churns this layer's digest every rebuild.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 ffmpeg aria2 atomicparsley ca-certificates tini \
-    && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /opt/venv /opt/venv
+    && rm -rf /var/lib/apt/lists/* /var/log/* /var/cache/ldconfig/aux-cache
+# Deps first (heavy, slow-moving) then yt-dlp (thin, changes nightly), as two layers, so
+# the big deps layer keeps its digest across nightlies and only the small one re-downloads.
+COPY --from=builder /opt/deps /opt/deps
+COPY --from=builder /opt/ytdlp /opt/ytdlp
 COPY --from=builder /usr/local/bin/deno /usr/local/bin/deno
+# pip --target writes no console script, so provide a trivial one. yt-dlp goes first on
+# PYTHONPATH so the thin layer shadows the deps tree; python3 is the base image's (same
+# debian digest as the builder → matching ABI for the compiled deps). DONTWRITEBYTECODE
+# keeps --rm runs from littering the trees with throwaway .pyc.
 # HOME=/tmp is a writable default for a bare `docker run`; the wrapper overrides it
 # to a mounted dir so yt-dlp's cache (notably the yt-dlp-ejs JS solver) persists at
 # $HOME/.cache/yt-dlp across runs instead of being thrown away with --rm.
-ENV PATH=/opt/venv/bin:$PATH \
+ENV PYTHONPATH=/opt/ytdlp:/opt/deps \
+    PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp
+RUN printf '#!/usr/bin/env python3\nimport sys\nfrom yt_dlp import main\nsys.exit(main())\n' \
+      > /usr/local/bin/yt-dlp \
+ && chmod +x /usr/local/bin/yt-dlp
 RUN yt-dlp --version > /IMAGE_VERSION \
-    && python3 -c 'import curl_cffi' \
+    && python3 -c 'import curl_cffi, Cryptodome' \
     && deno --version
 ENTRYPOINT ["tini", "-g", "--", "yt-dlp"]

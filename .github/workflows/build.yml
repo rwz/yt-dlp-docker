@@ -22,6 +22,10 @@ permissions:
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/yt-dlp-docker
+  # Fixed epoch for reproducible builds: combined with rewrite-timestamp on the push
+  # step, unchanged layers keep a byte-identical digest across nightly rebuilds and so
+  # aren't re-downloaded. Any constant works; 0 is simplest.
+  SOURCE_DATE_EPOCH: "0"
 
 jobs:
   build:
@@ -112,9 +116,9 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
           provenance: mode=max
           sbom: true
+          outputs: type=image,push=true,rewrite-timestamp=true
           tags: |
             ${{ env.IMAGE }}:${{ matrix.channel }}
             ${{ env.IMAGE }}:${{ matrix.channel }}-${{ steps.meta.outputs.date }}
