@@ -42,8 +42,8 @@ docker run --rm --entrypoint python3 "$IMAGE" -c 'import curl_cffi' \
 ok "curl_cffi importable"
 
 # yt-dlp can enumerate impersonate targets (proves curl_cffi is wired in)
-docker run --rm "$IMAGE" --list-impersonate-targets 2>&1 | grep -qi 'chrome' \
-  || fail "no impersonate targets listed"
+docker run --rm "$IMAGE" --list-impersonate-targets 2>/dev/null | grep -qiE 'chrome.*curl_cffi$' \
+  || fail "no working impersonate target (chrome via curl_cffi) listed"
 ok "impersonate targets listed"
 
 echo "== Deno / JS runtime =="
