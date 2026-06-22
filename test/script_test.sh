@@ -80,6 +80,14 @@ if ( cd "$home" && YTDLP_DOCKER_OS=Darwin "$bindir/yt-dlp" foo ) | grep -q -- '-
 fi
 ok "t4 --user gated on Linux"
 
+# t4b: --user gating is mode-independent — same for the scoped variant
+out_scoped_linux="$( cd "$home/sub" && YTDLP_DOCKER_OS=Linux "$bindir/yt-dlp-scoped" foo )"
+echo "$out_scoped_linux" | grep -q -- "--user $(id -u):$(id -g)" || fail "t4b scoped Linux should add --user"
+if ( cd "$home/sub" && YTDLP_DOCKER_OS=Darwin "$bindir/yt-dlp-scoped" foo ) | grep -q -- '--user'; then
+  fail "t4b scoped Darwin should NOT add --user"
+fi
+ok "t4b scoped: --user gated on Linux"
+
 # t5: scoped dispatch (basename) — CWD-only mount, HOME=PWD, NOT all of HOME; no config dir yet
 out="$( cd "$home/sub" && "$bindir/yt-dlp-scoped" foo )"
 echo "$out" | grep -q -- "-v $home/sub:$home/sub" || fail "t5 scoped missing PWD mount"
