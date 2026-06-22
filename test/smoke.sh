@@ -15,7 +15,8 @@ fi
 echo "== core capabilities on $IMAGE =="
 
 # yt-dlp runs and prints a date-style version
-docker run --rm "$IMAGE" --version >/dev/null || fail "yt-dlp --version failed"
+docker run --rm "$IMAGE" --version | grep -qE '^[0-9]{4}\.[0-9]' \
+  || fail "yt-dlp --version not a date-style version"
 ok "yt-dlp --version"
 
 # /IMAGE_VERSION baked in, looks like a yt-dlp version (YYYY.MM.DD[...])
