@@ -51,7 +51,14 @@ LABEL dev.rwz.yt-dlp-docker=true \
 # Also drop apt/dpkg logs + the ldconfig aux-cache (not just apt lists): they embed
 # build-time timestamps as file *content*, which the reproducible-build timestamp
 # rewrite can't normalize — leaving them re-churns this layer's digest every rebuild.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+#
+# apt-get upgrade pulls Debian security patches for packages already baked into the
+# digest-pinned base and their transitive deps (e.g. libssh2, in via aria2). The pin
+# freezes the base layer, so without this an installed-but-vulnerable package never
+# gets the fix and the Trivy gate (ignore-unfixed) goes red the day Debian publishes
+# one. Still reproducible — the layer just legitimately re-ships when a pkg changes.
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
       python3 ffmpeg aria2 atomicparsley ca-certificates tini \
     && rm -rf /var/lib/apt/lists/* /var/log/* /var/cache/ldconfig/aux-cache
 # Deps first (heavy, slow-moving) then yt-dlp (thin, changes nightly), as two layers, so
