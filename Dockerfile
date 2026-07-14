@@ -48,6 +48,16 @@ LABEL dev.rwz.yt-dlp-docker=true \
       org.opencontainers.image.source=https://github.com/rwz/yt-dlp-docker \
       org.opencontainers.image.description="Transparent, always-latest yt-dlp CLI in Docker" \
       org.opencontainers.image.licenses=Unlicense
+# APT_EPOCH is a daily-rotating value passed by CI (the UTC date). It only appears in
+# this layer's cache key — changing it forces the apt-get upgrade/install below to
+# actually re-run against the live Debian mirror instead of restoring a frozen cached
+# layer. Without it, cache-from (type=gha) pins this layer to whatever package versions
+# were current when it last executed, so security patches are never pulled and the Trivy
+# gate goes red the day Debian publishes a fix. Reproducibility is preserved: identical
+# packages still produce a byte-identical layer (the echo goes to the build log, not the
+# image), so the pushed digest — and what clients re-download — changes only when a
+# package actually changes.
+ARG APT_EPOCH=0
 # Also drop apt/dpkg logs + the ldconfig aux-cache (not just apt lists): they embed
 # build-time timestamps as file *content*, which the reproducible-build timestamp
 # rewrite can't normalize — leaving them re-churns this layer's digest every rebuild.
@@ -57,7 +67,8 @@ LABEL dev.rwz.yt-dlp-docker=true \
 # freezes the base layer, so without this an installed-but-vulnerable package never
 # gets the fix and the Trivy gate (ignore-unfixed) goes red the day Debian publishes
 # one. Still reproducible — the layer just legitimately re-ships when a pkg changes.
-RUN apt-get update && apt-get upgrade -y \
+RUN echo "apt-epoch: ${APT_EPOCH}" \
+    && apt-get update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
       python3 ffmpeg aria2 atomicparsley ca-certificates tini \
     && rm -rf /var/lib/apt/lists/* /var/log/* /var/cache/ldconfig/aux-cache
