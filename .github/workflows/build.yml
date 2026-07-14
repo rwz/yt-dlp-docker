@@ -59,7 +59,7 @@ jobs:
         run: echo "epoch=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
       - name: Build amd64 for smoke
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
         with:
           context: .
           platforms: linux/amd64
@@ -82,7 +82,7 @@ jobs:
           echo "date=$(echo "$v" | cut -d. -f1-3)" >> "$GITHUB_OUTPUT"
 
       - name: Build arm64 for smoke (QEMU)
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
         with:
           context: .
           platforms: linux/arm64
@@ -118,7 +118,7 @@ jobs:
 
       - name: Build & push multi-arch
         id: push
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
