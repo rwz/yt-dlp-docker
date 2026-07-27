@@ -28,12 +28,12 @@ RUN pip install --no-cache-dir --no-compile ${YTDLP_PRE} --only-binary=:all: \
 # Deno is hand-pinned: bump DENO_VERSION and BOTH DSUM checksums together from
 # https://github.com/denoland/deno/releases — Dependabot does not track this raw
 # download. Each DSUM is the sha256 of that arch's .zip.
-ARG DENO_VERSION=v2.8.3
+ARG DENO_VERSION=v2.9.4
 ARG TARGETARCH
 RUN set -eux; \
     case "${TARGETARCH}" in \
-      amd64) DA=x86_64;  DSUM=30455b845ffa6082209c3590269c910ad3b7efdf28c9879afd4006c47ae54197 ;; \
-      arm64) DA=aarch64; DSUM=d4589cc1ffcbf1995c92a0127d932aaf832ac70cfdcc6d5b7bf38043cf303575 ;; \
+      amd64) DA=x86_64;  DSUM=c24f955d9fbfe0ea5ae2b501c8e71ae76e31e4c9782390a54a284b3364fda725 ;; \
+      arm64) DA=aarch64; DSUM=111da5c05c240cfdc4340f234a0e3539d39dbcb6755221f19dcd60bacc8be5aa ;; \
       *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     curl -fL "https://github.com/denoland/deno/releases/download/${DENO_VERSION}/deno-${DA}-unknown-linux-gnu.zip" -o /tmp/deno.zip; \
