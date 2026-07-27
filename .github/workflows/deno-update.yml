@@ -1,0 +1,127 @@
+name: deno-update
+
+# Deno arrives as a raw release download, so Dependabot cannot see it — it only
+# covers the github-actions and docker ecosystems configured for this repo. Trivy
+# is no help either: `scanners: vuln` finds OS packages and Python dist-info, not
+# a standalone stripped binary. Without this job the DENO_VERSION pin in the
+# Dockerfile ages out silently, which is exactly how it drifted from v2.8.3 while
+# every other component tracked latest daily.
+on:
+  schedule:
+    - cron: "0 5 * * 1"   # weekly, Mondays — matches the Dependabot cadence
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # push the bump branch
+      pull-requests: write  # open the PR
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Compare the pin against the latest Deno release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cur="$(sed -n 's/^ARG DENO_VERSION=//p' Dockerfile)"
+          [ -n "$cur" ] || { echo "::error::could not read ARG DENO_VERSION from Dockerfile"; exit 1; }
+          latest="$(gh api repos/denoland/deno/releases/latest --jq .tag_name)"
+          echo "pinned=$cur latest=$latest"
+          {
+            echo "cur=$cur"
+            echo "latest=$latest"
+            echo "outdated=$([ "$cur" = "$latest" ] && echo false || echo true)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Fetch and verify the new checksums
+        id: sums
+        if: steps.check.outputs.outdated == 'true'
+        env:
+          LATEST: ${{ steps.check.outputs.latest }}
+        run: |
+          set -euo pipefail
+          base="https://github.com/denoland/deno/releases/download/$LATEST"
+          for pair in "amd:x86_64" "arm:aarch64"; do
+            key="${pair%%:*}"; arch="${pair##*:}"
+            asset="deno-${arch}-unknown-linux-gnu.zip"
+            curl -fsSL "$base/$asset" -o "/tmp/$asset"
+            sum="$(curl -fsSL "$base/$asset.sha256sum" | awk '{print $1}')"
+            [[ "$sum" =~ ^[0-9a-f]{64}$ ]] \
+              || { echo "::error::malformed checksum for $asset: $sum"; exit 1; }
+            # Upstream's own .sha256sum, so this is a pin rather than an independent
+            # trust root — same guarantee the hand-copied value gave. What it does buy:
+            # proof both assets exist under the new tag and that the sum file matches
+            # the artifact, so a renamed or missing arch fails here, not in the build.
+            echo "$sum  /tmp/$asset" | sha256sum -c -
+            echo "${key}_sum=$sum" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Open the bump PR
+        if: steps.check.outputs.outdated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CUR: ${{ steps.check.outputs.cur }}
+          LATEST: ${{ steps.check.outputs.latest }}
+          AMD_SUM: ${{ steps.sums.outputs.amd_sum }}
+          ARM_SUM: ${{ steps.sums.outputs.arm_sum }}
+        run: |
+          set -euo pipefail
+          branch="deno-update/$LATEST"
+          open="$(gh pr list --head "$branch" --state open --json number --jq 'length')"
+          [ "$open" = "0" ] || { echo "PR for $LATEST already open; nothing to do"; exit 0; }
+
+          sed -i \
+            -e "s|^ARG DENO_VERSION=.*|ARG DENO_VERSION=$LATEST|" \
+            -e "s|\(amd64) DA=x86_64;  DSUM=\)[0-9a-f]\{64\}|\1$AMD_SUM|" \
+            -e "s|\(arm64) DA=aarch64; DSUM=\)[0-9a-f]\{64\}|\1$ARM_SUM|" \
+            Dockerfile
+
+          # All three substitutions must land — if the Dockerfile formatting drifts,
+          # fail loudly rather than open a PR that bumps the version but keeps the
+          # old checksums (which would break the build at sha256sum -c).
+          grep -q "^ARG DENO_VERSION=$LATEST$" Dockerfile || { echo "::error::version substitution missed"; exit 1; }
+          grep -q "DSUM=$AMD_SUM" Dockerfile || { echo "::error::amd64 checksum substitution missed"; exit 1; }
+          grep -q "DSUM=$ARM_SUM" Dockerfile || { echo "::error::arm64 checksum substitution missed"; exit 1; }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "Bump Deno from $CUR to $LATEST"
+          git push -u origin "$branch"
+
+          # Body via a file: a nested heredoc inside a YAML block scalar needs its
+          # terminator at the block's own indent, which reads badly. This keeps the
+          # markdown at one indent level that YAML strips back to column 0.
+          cat > /tmp/pr-body.md <<EOF
+          Automated by \`.github/workflows/deno-update.yml\`.
+
+          | | |
+          |---|---|
+          | from | \`$CUR\` |
+          | to | \`$LATEST\` |
+          | amd64 (x86_64) | \`$AMD_SUM\` |
+          | arm64 (aarch64) | \`$ARM_SUM\` |
+
+          Both checksums come from the release's published \`.sha256sum\` assets and were
+          verified against the downloaded \`.zip\` before this PR was opened.
+
+          [Release notes](https://github.com/denoland/deno/releases/tag/$LATEST)
+
+          Note: PRs opened with \`GITHUB_TOKEN\` do not trigger other workflows, and the
+          build workflow is push-to-main only in any case — the Dockerfile is first
+          exercised by the daily build after merge.
+          EOF
+
+          gh pr create \
+            --title "Bump Deno from $CUR to $LATEST" \
+            --body-file /tmp/pr-body.md

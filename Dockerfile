@@ -25,9 +25,14 @@ RUN pip install --no-cache-dir --no-compile ${YTDLP_PRE} --only-binary=:all: \
  && mv /opt/deps/yt_dlp /opt/deps/yt_dlp-*.dist-info \
        /opt/deps/yt_dlp_ejs /opt/deps/yt_dlp_ejs-*.dist-info /opt/ytdlp/
 
-# Deno is hand-pinned: bump DENO_VERSION and BOTH DSUM checksums together from
-# https://github.com/denoland/deno/releases — Dependabot does not track this raw
-# download. Each DSUM is the sha256 of that arch's .zip.
+# Deno is pinned by hand because Dependabot does not track raw release downloads.
+# The weekly deno-update workflow watches for new releases and opens the bump PR
+# for you; to do it manually, change DENO_VERSION and BOTH DSUM checksums together
+# from https://github.com/denoland/deno/releases. Each DSUM is the sha256 of that
+# arch's .zip, published alongside it as a .sha256sum asset.
+#
+# Keep the two case arms on one line each in this exact shape — deno-update.yml
+# rewrites them by regex and fails loudly if the formatting drifts.
 ARG DENO_VERSION=v2.9.4
 ARG TARGETARCH
 RUN set -eux; \
