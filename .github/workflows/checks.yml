@@ -3,11 +3,13 @@ on:
   push:
     branches: [main]
     paths:
+      - Dockerfile
       - shell/**
       - test/**
       - .github/workflows/checks.yml
   pull_request:
     paths:
+      - Dockerfile
       - shell/**
       - test/**
       - .github/workflows/checks.yml
@@ -26,3 +28,14 @@ jobs:
 
       - name: Script tests
         run: bash test/script_test.sh
+
+  # Runs here rather than in build.yml: the reproducibility of the apt layer can only be
+  # broken by a Dockerfile edit, so gate it on the change instead of paying two apt
+  # installs on every daily rebuild.
+  layer-stability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
+      - name: Runtime apt layer is reproducible
+        run: bash test/layer_stability.sh

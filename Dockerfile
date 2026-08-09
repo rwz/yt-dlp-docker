@@ -63,9 +63,15 @@ LABEL dev.rwz.yt-dlp-docker=true \
 # image), so the pushed digest — and what clients re-download — changes only when a
 # package actually changes.
 ARG APT_EPOCH=0
-# Also drop apt/dpkg logs + the ldconfig aux-cache (not just apt lists): they embed
-# build-time timestamps as file *content*, which the reproducible-build timestamp
-# rewrite can't normalize — leaving them re-churns this layer's digest every rebuild.
+# Also drop apt/dpkg logs, the ldconfig aux-cache and the fontconfig cache (not just apt
+# lists): they embed build-time timestamps as file *content*, which the reproducible-build
+# timestamp rewrite can't normalize — leaving them re-churns this layer's digest every
+# rebuild. fontconfig is the expensive one: its ~21KB of *.cache-9 files bake in the font
+# directories' mtimes, so this layer re-shipped all ~179MB to every client on *every*
+# nightly — not just when a package changed — while 5846 of its 5850 files stayed
+# byte-identical. That silently defeated the whole layer split. Dropping it costs nothing:
+# fontconfig rebuilds the cache on demand (in $HOME/.cache when / is read-only), and
+# ffmpeg's subtitle burn-in and drawtext still work. test/layer_stability.sh guards this.
 #
 # apt-get upgrade pulls Debian security patches for packages already baked into the
 # digest-pinned base and their transitive deps (e.g. libssh2, in via aria2). The pin
@@ -76,7 +82,8 @@ RUN echo "apt-epoch: ${APT_EPOCH}" \
     && apt-get update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
       python3 ffmpeg aria2 atomicparsley ca-certificates tini \
-    && rm -rf /var/lib/apt/lists/* /var/log/* /var/cache/ldconfig/aux-cache
+    && rm -rf /var/lib/apt/lists/* /var/log/* /var/cache/ldconfig/aux-cache \
+              /var/cache/fontconfig
 # Deps first (heavy, slow-moving) then yt-dlp (thin, changes nightly), as two layers, so
 # the big deps layer keeps its digest across nightlies and only the small one re-downloads.
 COPY --from=builder /opt/deps /opt/deps
