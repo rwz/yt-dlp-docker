@@ -77,8 +77,13 @@ jobs:
         run: |
           set -euo pipefail
           branch="deno-update/$LATEST"
-          open="$(gh pr list --head "$branch" --state open --json number --jq 'length')"
-          [ "$open" = "0" ] || { echo "PR for $LATEST already open; nothing to do"; exit 0; }
+
+          # --state all, not just open: a closed-unmerged PR is a decision, and
+          # reopening the same bump every Monday would re-litigate it. The check is
+          # per-version, so it clears itself as soon as a new release lands under a
+          # new branch name.
+          prs="$(gh pr list --head "$branch" --state all --json number --jq 'length')"
+          [ "$prs" = "0" ] || { echo "PR for $LATEST already exists; nothing to do"; exit 0; }
 
           sed -i \
             -e "s|^ARG DENO_VERSION=.*|ARG DENO_VERSION=$LATEST|" \
@@ -97,7 +102,22 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
           git commit -am "Bump Deno from $CUR to $LATEST"
-          git push -u origin "$branch"
+
+          # The branch can already exist with no PR pointing at it: the run that
+          # pushed it went on to fail at `gh pr create`, which is what happens when
+          # the repo forbids Actions from creating pull requests. The commit built
+          # here is a different SHA (same tree, later timestamp), so a plain push is
+          # rejected non-fast-forward and every subsequent run fails the same way.
+          # Overwrite that debris instead. The --state all check above guarantees
+          # nothing is left pointing at what gets replaced, and only this workflow
+          # writes under deno-update/. The lease needs an explicit SHA because the
+          # shallow checkout has no remote-tracking ref for the branch.
+          if sha="$(git ls-remote --exit-code origin "refs/heads/$branch" | cut -f1)"; then
+            echo "origin/$branch already exists at $sha with no PR; replacing it"
+            git push --force-with-lease="$branch:$sha" -u origin "$branch"
+          else
+            git push -u origin "$branch"
+          fi
 
           # Body via a file: a nested heredoc inside a YAML block scalar needs its
           # terminator at the block's own indent, which reads badly. This keeps the
