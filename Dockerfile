@@ -33,12 +33,12 @@ RUN pip install --no-cache-dir --no-compile ${YTDLP_PRE} --only-binary=:all: \
 #
 # Keep the two case arms on one line each in this exact shape — deno-update.yml
 # rewrites them by regex and fails loudly if the formatting drifts.
-ARG DENO_VERSION=v2.9.5
+ARG DENO_VERSION=v2.9.6
 ARG TARGETARCH
 RUN set -eux; \
     case "${TARGETARCH}" in \
-      amd64) DA=x86_64;  DSUM=8b010a3b1a4a0188a67cdb8a7a27348b2a501af78aec7fc74f2ace167368d530 ;; \
-      arm64) DA=aarch64; DSUM=6b7cae3a8fc4385a59dea3146fcb8bad7fea4230e0ad36a8c692afacbc254be0 ;; \
+      amd64) DA=x86_64;  DSUM=394f07f4da2bebe6ce6f1e7ce0fa16429b29b08c35e3fac3fe25972676dff4b2 ;; \
+      arm64) DA=aarch64; DSUM=9a46afc6c392c7cd2ff71a31558935545b46408d0e87f7a86908c712721c046e ;; \
       *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     curl -fL "https://github.com/denoland/deno/releases/download/${DENO_VERSION}/deno-${DA}-unknown-linux-gnu.zip" -o /tmp/deno.zip; \
