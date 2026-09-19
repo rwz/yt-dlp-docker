@@ -11,11 +11,18 @@
 # directories' mtimes, re-shipped 179MB to every client daily while 5846 of the layer's
 # 5850 files were identical.
 #
-# Two builds, two ways to break it:
-#   A  the pinned base, as CI builds it
-#   B  the same base with every mtime rewritten, standing in for a Dependabot base bump
-# A vs B differ in both wall-clock build time and base mtimes, so a single comparison
-# catches caches keyed on either. Identical layer digest = pass.
+# Two builds, two ways to break it: A and B each rewrite every base mtime, to a different
+# value, standing in for a Dependabot base bump. A vs B differ in both wall-clock build
+# time and base mtimes, so a single comparison catches caches keyed on either. Identical
+# layer digest = pass.
+#
+# Both sides are perturbed, not just one, because the layer's file *set* depends on the
+# base's mtimes too. When apt-get upgrade has work to do (the pinned base lags a Debian
+# point release), dpkg rewrites some unchanged files with their original content and
+# mtime; BuildKit's snapshot differ drops those from the layer only if they still match
+# the base's mtime. Against an unperturbed base they'd be dropped on one side and shipped
+# on the other — a digest mismatch no real rebuild would see, since consecutive nightlies
+# share the same unmodified base.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -42,21 +49,19 @@ grep -q 'apt-get install' <<<"$APT_RUN" || fail "extracted block has no apt-get 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-cat > "$WORK/Dockerfile.a" <<EOF
-$BASE
-ARG APT_EPOCH=0
-$APT_RUN
-EOF
-
 # Rewriting every mtime reproduces what a base rebuild does to file timestamps without
 # depending on some older digest still being pullable.
-cat > "$WORK/Dockerfile.b" <<EOF
+variant() {
+  cat > "$WORK/Dockerfile.$1" <<EOF
 $BASE AS perturbed
-RUN find / -xdev -exec touch -h -d @1700000000 {} + 2>/dev/null || true
+RUN find / -xdev -exec touch -h -d @$2 {} + 2>/dev/null || true
 FROM perturbed
 ARG APT_EPOCH=0
 $APT_RUN
 EOF
+}
+variant a 1600000000
+variant b 1700000000
 
 echo "== runtime apt layer stability on $PLATFORM =="
 echo "   base: ${BASE#FROM }"
@@ -69,7 +74,7 @@ build() {
     "$WORK" >/dev/null 2>&1 || fail "build $1 failed"
 }
 
-# Digest of the top layer — the apt layer in both variants (b's perturb step is a
+# Digest of the top layer — the apt layer in both variants (the perturb step is a
 # separate, lower layer).
 top_layer() {
   python3 - "$WORK/$1.tar" <<'PY'
@@ -83,8 +88,8 @@ print(m["layers"][-1]["digest"])
 PY
 }
 
-build a; ok "built A (pinned base)"
-build b; ok "built B (base with rewritten mtimes)"
+build a; ok "built A (base mtimes rewritten to @1600000000)"
+build b; ok "built B (base mtimes rewritten to @1700000000)"
 
 A="$(top_layer a)"
 B="$(top_layer b)"
