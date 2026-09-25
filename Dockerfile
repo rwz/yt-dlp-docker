@@ -3,7 +3,7 @@
 # ---- builder ----
 # Base pinned by digest, bumped by Dependabot (docker ecosystem). Keep both FROM
 # lines on the same debian:trixie-slim digest — Dependabot updates them together.
-FROM debian:trixie-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS builder
+FROM debian:trixie-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a AS builder
 ARG YTDLP_REQ="yt-dlp[default,curl-cffi]"
 ARG YTDLP_PRE="--pre"
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -48,7 +48,7 @@ RUN set -eux; \
     rm /tmp/deno.zip
 
 # ---- runtime ----
-FROM debian:trixie-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132
+FROM debian:trixie-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
 LABEL dev.rwz.yt-dlp-docker=true \
       org.opencontainers.image.source=https://github.com/rwz/yt-dlp-docker \
       org.opencontainers.image.description="Transparent, always-latest yt-dlp CLI in Docker" \
