@@ -54,8 +54,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Daily apt cache-bust epoch
-        id: apt
+      - name: Daily cache-bust epoch
+        id: epoch
         run: echo "epoch=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
       - name: Build amd64 for smoke
@@ -68,7 +68,7 @@ jobs:
           build-args: |
             YTDLP_PRE=${{ matrix.ytdlp_pre }}
             YTDLP_REQ=${{ matrix.req }}
-            APT_EPOCH=${{ steps.apt.outputs.epoch }}
+            CACHE_EPOCH=${{ steps.epoch.outputs.epoch }}
           cache-from: type=gha,scope=${{ matrix.channel }}-amd64
           cache-to: type=gha,mode=max,scope=${{ matrix.channel }}-amd64
 
@@ -91,7 +91,7 @@ jobs:
           build-args: |
             YTDLP_PRE=${{ matrix.ytdlp_pre }}
             YTDLP_REQ=${{ matrix.req }}
-            APT_EPOCH=${{ steps.apt.outputs.epoch }}
+            CACHE_EPOCH=${{ steps.epoch.outputs.epoch }}
           cache-from: type=gha,scope=${{ matrix.channel }}-arm64
           cache-to: type=gha,mode=max,scope=${{ matrix.channel }}-arm64
 
@@ -131,7 +131,7 @@ jobs:
           build-args: |
             YTDLP_PRE=${{ matrix.ytdlp_pre }}
             YTDLP_REQ=${{ matrix.req }}
-            APT_EPOCH=${{ steps.apt.outputs.epoch }}
+            CACHE_EPOCH=${{ steps.epoch.outputs.epoch }}
           cache-from: |
             type=gha,scope=${{ matrix.channel }}-amd64
             type=gha,scope=${{ matrix.channel }}-arm64
