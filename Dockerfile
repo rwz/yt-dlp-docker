@@ -11,19 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
-# YTDLP_PRE selects the channel: "--pre" (default) = nightly, "" = stable.
-# (Named YTDLP_PRE, not PIP_PRE, so it can't collide with pip's PIP_* config env vars.)
-#
-# Install into a plain --target tree, then split it: yt-dlp + yt-dlp-ejs (which change
-# every nightly) go to /opt/ytdlp; the heavy, slow-moving deps (curl-cffi, pycryptodomex,
-# …) stay in /opt/deps. The runtime stage COPYs them as two layers so a nightly bump only
-# re-ships the small /opt/ytdlp layer. --no-compile ships no build-time .pyc, whose embedded
-# source mtimes would otherwise make the layers non-reproducible (defeating the split).
-RUN pip install --no-cache-dir --no-compile ${YTDLP_PRE} --only-binary=:all: \
-      --target /opt/deps ${YTDLP_REQ} \
- && mkdir -p /opt/ytdlp \
- && mv /opt/deps/yt_dlp /opt/deps/yt_dlp-*.dist-info \
-       /opt/deps/yt_dlp_ejs /opt/deps/yt_dlp_ejs-*.dist-info /opt/ytdlp/
 
 # Deno is pinned by hand because Dependabot does not track raw release downloads.
 # The weekly deno-update workflow watches for new releases and opens the bump PR
@@ -47,13 +34,34 @@ RUN set -eux; \
     chmod +x /usr/local/bin/deno; \
     rm /tmp/deno.zip
 
+# YTDLP_PRE selects the channel: "--pre" (default) = nightly, "" = stable.
+# (Named YTDLP_PRE, not PIP_PRE, so it can't collide with pip's PIP_* config env vars.)
+#
+# Install into a plain --target tree, then split it: yt-dlp + yt-dlp-ejs (which change
+# every nightly) go to /opt/ytdlp; the heavy, slow-moving deps (curl-cffi, pycryptodomex,
+# …) stay in /opt/deps. The runtime stage COPYs them as two layers so a nightly bump only
+# re-ships the small /opt/ytdlp layer. --no-compile ships no build-time .pyc, whose embedded
+# source mtimes would otherwise make the layers non-reproducible (defeating the split).
+#
+# CACHE_EPOCH: same daily value and reason as the runtime apt layer — nothing else in this
+# layer's cache key changes day to day, so without it cache-from (type=gha) replays a frozen
+# pip resolution and yt-dlp and its deps never update. Keep this last in the stage: an ARG
+# busts the cache of every RUN after it, and this is the only one that needs a daily re-run.
+ARG CACHE_EPOCH=0
+RUN echo "pip-epoch: ${CACHE_EPOCH}" \
+ && pip install --no-cache-dir --no-compile ${YTDLP_PRE} --only-binary=:all: \
+      --target /opt/deps ${YTDLP_REQ} \
+ && mkdir -p /opt/ytdlp \
+ && mv /opt/deps/yt_dlp /opt/deps/yt_dlp-*.dist-info \
+       /opt/deps/yt_dlp_ejs /opt/deps/yt_dlp_ejs-*.dist-info /opt/ytdlp/
+
 # ---- runtime ----
 FROM debian:trixie-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f
 LABEL dev.rwz.yt-dlp-docker=true \
       org.opencontainers.image.source=https://github.com/rwz/yt-dlp-docker \
       org.opencontainers.image.description="Transparent, always-latest yt-dlp CLI in Docker" \
       org.opencontainers.image.licenses=Unlicense
-# APT_EPOCH is a daily-rotating value passed by CI (the UTC date). It only appears in
+# CACHE_EPOCH is a daily-rotating value passed by CI (the UTC date). It only appears in
 # this layer's cache key — changing it forces the apt-get upgrade/install below to
 # actually re-run against the live Debian mirror instead of restoring a frozen cached
 # layer. Without it, cache-from (type=gha) pins this layer to whatever package versions
@@ -62,7 +70,7 @@ LABEL dev.rwz.yt-dlp-docker=true \
 # packages still produce a byte-identical layer (the echo goes to the build log, not the
 # image), so the pushed digest — and what clients re-download — changes only when a
 # package actually changes.
-ARG APT_EPOCH=0
+ARG CACHE_EPOCH=0
 # Also drop apt/dpkg logs, the ldconfig aux-cache and the fontconfig cache (not just apt
 # lists): they embed build-time timestamps as file *content*, which the reproducible-build
 # timestamp rewrite can't normalize — leaving them re-churns this layer's digest every
@@ -78,7 +86,7 @@ ARG APT_EPOCH=0
 # freezes the base layer, so without this an installed-but-vulnerable package never
 # gets the fix and the Trivy gate (ignore-unfixed) goes red the day Debian publishes
 # one. Still reproducible — the layer just legitimately re-ships when a pkg changes.
-RUN echo "apt-epoch: ${APT_EPOCH}" \
+RUN echo "apt-epoch: ${CACHE_EPOCH}" \
     && apt-get update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
       python3 ffmpeg aria2 atomicparsley ca-certificates tini \

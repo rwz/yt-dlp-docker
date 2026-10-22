@@ -56,7 +56,7 @@ variant() {
 $BASE AS perturbed
 RUN find / -xdev -exec touch -h -d @$2 {} + 2>/dev/null || true
 FROM perturbed
-ARG APT_EPOCH=0
+ARG CACHE_EPOCH=0
 $APT_RUN
 EOF
 }
