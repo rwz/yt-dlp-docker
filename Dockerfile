@@ -20,12 +20,12 @@ ENV PATH=/opt/venv/bin:$PATH
 #
 # Keep the two case arms on one line each in this exact shape — deno-update.yml
 # rewrites them by regex and fails loudly if the formatting drifts.
-ARG DENO_VERSION=v2.9.7
+ARG DENO_VERSION=v2.9.8
 ARG TARGETARCH
 RUN set -eux; \
     case "${TARGETARCH}" in \
-      amd64) DA=x86_64;  DSUM=c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490 ;; \
-      arm64) DA=aarch64; DSUM=c832298b1ad4422481334855f6003e0f54145762c5a134f20a489511d2f65bbf ;; \
+      amd64) DA=x86_64;  DSUM=e890975bc2549807bbcc0b584ffafda72cc7c93349dd99c80483dd784f6c4609 ;; \
+      arm64) DA=aarch64; DSUM=d49596c20b9788cf8f5d8ddf644103d4bde56ed239753f0bdb92ba9361d51905 ;; \
       *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     curl -fL "https://github.com/denoland/deno/releases/download/${DENO_VERSION}/deno-${DA}-unknown-linux-gnu.zip" -o /tmp/deno.zip; \
