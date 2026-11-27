@@ -3,7 +3,7 @@
 # ---- builder ----
 # Base pinned by digest, bumped by Dependabot (docker ecosystem). Keep both FROM
 # lines on the same debian:trixie-slim digest — Dependabot updates them together.
-FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2 AS builder
+FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0 AS builder
 ARG YTDLP_REQ="yt-dlp[default,curl-cffi]"
 ARG YTDLP_PRE="--pre"
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -56,7 +56,7 @@ RUN echo "pip-epoch: ${CACHE_EPOCH}" \
        /opt/deps/yt_dlp_ejs /opt/deps/yt_dlp_ejs-*.dist-info /opt/ytdlp/
 
 # ---- runtime ----
-FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
+FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0
 LABEL dev.rwz.yt-dlp-docker=true \
       org.opencontainers.image.source=https://github.com/rwz/yt-dlp-docker \
       org.opencontainers.image.description="Transparent, always-latest yt-dlp CLI in Docker" \
